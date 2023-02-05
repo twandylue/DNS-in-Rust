@@ -33,7 +33,7 @@ impl BytePacketBuffer {
     /// Read a single byte and move the position one step forward
     fn read(&mut self) -> Result<u8, Box<dyn std::error::Error>> {
         if self.pos >= 512 {
-            return Err("End of the buffer".into());
+            return Err("End of buffer".into());
         }
         let res = self.buf[self.pos];
         self.pos += 1;
@@ -44,20 +44,16 @@ impl BytePacketBuffer {
     /// Get a single byte, without changing the buffer position
     fn get(&self, pos: usize) -> Result<u8, Box<dyn std::error::Error>> {
         if self.pos >= 512 {
-            return Err("End of the buffer".into());
+            return Err("End of buffer".into());
         }
 
         Ok(self.buf[pos])
     }
 
     /// Get a range of bytes
-    pub fn get_range(
-        &mut self,
-        start: usize,
-        len: usize,
-    ) -> Result<&[u8], Box<dyn std::error::Error>> {
+    pub fn get_range(&self, start: usize, len: usize) -> Result<&[u8], Box<dyn std::error::Error>> {
         if start + len > 512 {
-            return Err("End of the buffer".into());
+            return Err("End of buffer".into());
         }
 
         Ok(&self.buf[start..start + len])
@@ -167,8 +163,7 @@ mod tests {
     }
 
     #[test]
-    // TODO: how to test error message?
-    fn read_ok_throw_error() {
+    fn read_error() {
         // arrange
         let mut buffer = BytePacketBuffer::new();
         buffer.seek(512).unwrap();
@@ -177,7 +172,12 @@ mod tests {
         let actual = buffer.read();
 
         // assert
-        assert!(actual.is_err());
+        match actual {
+            Ok(_) => (),
+            Err(r) => {
+                assert_eq!(r.to_string(), "End of buffer".to_string());
+            }
+        }
     }
 
     #[test]
@@ -194,5 +194,172 @@ mod tests {
         Ok(())
     }
 
-    // TODO: need more unit tests...
+    #[test]
+    fn get_error() {
+        // arrange
+        let mut buffer = BytePacketBuffer::new();
+        buffer.seek(512).unwrap();
+
+        // act
+        let actual = buffer.get(10);
+
+        // assert
+        match actual {
+            Ok(_) => (),
+            Err(r) => {
+                assert_eq!(r.to_string(), "End of buffer".to_string());
+            }
+        }
+    }
+
+    #[test]
+    fn get_range_ok_1() -> Result<(), Box<dyn std::error::Error>> {
+        // arrange
+        let expected: [u8; 512] = [0; 512];
+        let buffer = BytePacketBuffer::new();
+
+        // act
+        let actual = buffer.get_range(0, 512)?;
+
+        // assert
+        assert_eq!(expected, actual);
+        Ok(())
+    }
+
+    #[test]
+    fn get_range_ok_2() -> Result<(), Box<dyn std::error::Error>> {
+        // arrange
+        let expected: [u8; 10] = [0; 10];
+        let buffer = BytePacketBuffer::new();
+
+        // act
+        let actual = buffer.get_range(1, 10)?;
+
+        // assert
+        assert_eq!(expected, actual);
+        Ok(())
+    }
+
+    #[test]
+    fn get_range_error_1() {
+        // arrange
+        let buffer = BytePacketBuffer::new();
+
+        // act
+        let actual = buffer.get_range(0, 513);
+
+        // assert
+        match actual {
+            Ok(_) => (),
+            Err(r) => {
+                assert_eq!(r.to_string(), "End of buffer".to_string());
+            }
+        }
+    }
+
+    #[test]
+    fn get_range_error_2() {
+        // arrange
+        let buffer = BytePacketBuffer::new();
+
+        // act
+        let actual = buffer.get_range(1, 512);
+
+        // assert
+        match actual {
+            Ok(_) => (),
+            Err(r) => {
+                assert_eq!(r.to_string(), "End of buffer".to_string());
+            }
+        }
+    }
+
+    #[test]
+    fn get_read_u16_ok_1() -> Result<(), Box<dyn std::error::Error>> {
+        // arrange
+        let expected: u16 = 0;
+        let mut buffer = BytePacketBuffer::new();
+
+        // act
+        let actual = buffer.read_u16()?;
+
+        // assert
+        assert_eq!(expected, actual);
+        Ok(())
+    }
+
+    #[test]
+    fn get_read_u16_ok_2() -> Result<(), Box<dyn std::error::Error>> {
+        // arrange
+        let expected: u16 = 257;
+        let mut buffer = BytePacketBuffer::new();
+        buffer.buf = [1; 512];
+
+        // act
+        let actual = buffer.read_u16()?;
+
+        // assert
+        assert_eq!(expected, actual);
+        Ok(())
+    }
+
+    #[test]
+    fn get_read_u16_ok_3() -> Result<(), Box<dyn std::error::Error>> {
+        // arrange
+        let expected: u16 = 514;
+        let mut buffer = BytePacketBuffer::new();
+        buffer.buf = [2; 512];
+
+        // act
+        let actual = buffer.read_u16()?;
+
+        // assert
+        assert_eq!(expected, actual);
+        Ok(())
+    }
+
+    #[test]
+    fn get_read_u32_ok_1() -> Result<(), Box<dyn std::error::Error>> {
+        // arrange
+        let expected: u32 = 0;
+        let mut buffer = BytePacketBuffer::new();
+        // buffer.buf = [0; 512];
+
+        // act
+        let actual = buffer.read_u32()?;
+
+        // assert
+        assert_eq!(expected, actual);
+        Ok(())
+    }
+
+    #[test]
+    fn get_read_u32_ok_2() -> Result<(), Box<dyn std::error::Error>> {
+        // arrange
+        let expected: u32 = 16843009;
+        let mut buffer = BytePacketBuffer::new();
+        buffer.buf = [1; 512];
+
+        // act
+        let actual = buffer.read_u32()?;
+
+        // assert
+        assert_eq!(expected, actual);
+        Ok(())
+    }
+
+    #[test]
+    fn get_read_u32_ok_3() -> Result<(), Box<dyn std::error::Error>> {
+        // arrange
+        let expected: u32 = 33686018;
+        let mut buffer = BytePacketBuffer::new();
+        buffer.buf = [2; 512];
+
+        // act
+        let actual = buffer.read_u32()?;
+
+        // assert
+        assert_eq!(expected, actual);
+        Ok(())
+    }
 }
