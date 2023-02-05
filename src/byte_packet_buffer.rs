@@ -76,10 +76,57 @@ impl BytePacketBuffer {
         return Ok(res);
     }
 
-    /// Read a qname
-    ///
-    pub fn read_qname(&mut self, outstr: &mut str) -> Result<(), Box<dyn std::error::Error>> {
-        todo!()
+    /// Read a qname(domain name)
+    pub fn read_qname(&mut self, outstr: &mut String) -> Result<(), Box<dyn std::error::Error>> {
+        let mut pos = self.pos();
+
+        let mut jumped = false;
+        let max_jumps = 5;
+        let mut jump_performed = 0;
+
+        let mut delim = "";
+        loop {
+            if jump_performed > max_jumps {
+                return Err(format!("Limit of {} jumps exceeded", max_jumps).into());
+            }
+
+            let b = self.get(pos)?;
+
+            if (b & 0xC0) == 0xC0 {
+                if !jumped {
+                    self.seek(pos + 2)?;
+                }
+
+                let b2 = self.get(pos + 1)? as u16;
+                let offset = (((b as u16) ^ 0xC0) << 8) | b2;
+                // from the beginning of the buffer
+                pos = offset as usize;
+
+                jumped = true;
+                jump_performed += 1;
+
+                continue;
+            } else {
+                pos += 1;
+                if b == 0 {
+                    break;
+                }
+
+                outstr.push_str(delim);
+
+                let str_buffer = self.get_range(pos, b as usize)?;
+                outstr.push_str(&String::from_utf8_lossy(str_buffer).to_lowercase());
+
+                delim = ".";
+                pos += b as usize;
+            }
+        }
+
+        if !jumped {
+            self.seek(pos)?;
+        }
+
+        Ok(())
     }
 }
 
