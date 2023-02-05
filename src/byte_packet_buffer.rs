@@ -65,7 +65,7 @@ impl BytePacketBuffer {
 
     /// Read two bytes, stepping two steps forward
     pub fn read_u16(&mut self) -> Result<u16, Box<dyn std::error::Error>> {
-        let res = ((self.read()? as u16) << 8) | ((self.read()? as u16) << 16);
+        let res = ((self.read()? as u16) << 8) | ((self.read()? as u16) << 0);
 
         return Ok(res);
     }
