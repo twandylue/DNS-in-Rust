@@ -1,6 +1,6 @@
-# Useful Command in Linux
+# Useful Command
 
-## [Convert Hex to bits](https://unix.stackexchange.com/questions/279505/convert-hexadecimal-to-binary)
+## [Convert Hex to Binary](https://unix.stackexchange.com/questions/279505/convert-hexadecimal-to-binary)
 
 ### xxd
 
@@ -12,11 +12,18 @@ $ echo '01 20' | xxd -p -r | xxd -b -g 0 -c 8 | cut -c11-74
 ### Python
 
 ```python
-format(0xc0, '0>42b')
+>>> format(0xFF, '0>16b')
+'0000000011111111'
+```
+
+```python
+>>> f'{0xFF:0>16b}'
+'0000000011111111'
 ```
 
 ## Convert Hex to Decimal in Python
 
 ```python
-print(int('d8', base=16))
+>>> print(int('0xFF', base=16)) 
+255
 ```
