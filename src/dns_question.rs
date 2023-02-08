@@ -1,5 +1,6 @@
 use crate::{byte_packet_buffer::BytePacketBuffer, query_type::QueryType};
 
+#[derive(Debug, Clone)]
 pub struct DnsQuestion {
     pub name: String,
     pub qtype: QueryType,
