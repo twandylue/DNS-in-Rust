@@ -1,6 +1,6 @@
 pub struct BytePacketBuffer {
     pub buf: [u8; 512],
-    pos: usize,
+    pub pos: usize,
 }
 
 impl BytePacketBuffer {
