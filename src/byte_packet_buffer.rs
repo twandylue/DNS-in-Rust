@@ -1,5 +1,5 @@
 pub struct BytePacketBuffer {
-    buf: [u8; 512],
+    pub buf: [u8; 512],
     pos: usize,
 }
 
