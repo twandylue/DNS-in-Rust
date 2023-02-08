@@ -1,4 +1,5 @@
-use crate::{byte_packet_buffer::BytePacketBuffer, query_type::QueryType};
+use super::query_type::QueryType;
+use crate::byte_packet_buffer::BytePacketBuffer;
 use std::net::Ipv4Addr;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]

@@ -1,7 +1,6 @@
-use crate::{
-    byte_packet_buffer::BytePacketBuffer, dns_header::DnsHeader, dns_question::DnsQuestion,
-    dns_record::DnsRecord, query_type::QueryType,
-};
+use super::super::BytePacketBuffer;
+use super::query_type::QueryType;
+use super::{dns_header::DnsHeader, dns_question::DnsQuestion, dns_record::DnsRecord};
 
 #[derive(Clone, Debug)]
 pub struct DnsPacket {

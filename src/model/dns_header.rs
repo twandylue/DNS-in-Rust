@@ -1,4 +1,5 @@
-use crate::{byte_packet_buffer::BytePacketBuffer, result_code::ResultCode};
+use super::result_code::ResultCode;
+use crate::byte_packet_buffer::BytePacketBuffer;
 
 #[derive(Clone, Debug)]
 pub struct DnsHeader {
@@ -78,9 +79,9 @@ impl DnsHeader {
 
 #[cfg(test)]
 pub mod tests {
-    use crate::{byte_packet_buffer::BytePacketBuffer, result_code::ResultCode};
-
+    use super::BytePacketBuffer;
     use super::DnsHeader;
+    use super::ResultCode;
 
     #[test]
     fn dns_header_read_ok() -> Result<(), Box<dyn std::error::Error>> {
