@@ -163,7 +163,21 @@ impl BytePacketBuffer {
     }
 
     fn write_qname(&mut self, qname: &str) -> Result<(), Box<dyn std::error::Error>> {
-        todo!()
+        for section in qname.split('.') {
+            let len = section.len();
+            if len > 0x3f {
+                return Err("Single section exceeds 63 characters of length".into());
+            }
+
+            self.write_u8(len as u8)?;
+            for b in section.as_bytes() {
+                self.write_u8(*b)?;
+            }
+        }
+
+        self.write_u8(0)?;
+
+        Ok(())
     }
 }
 
@@ -444,6 +458,102 @@ mod tests {
 
         // assert
         assert_eq!(expected, actual);
+        Ok(())
+    }
+
+    #[test]
+    fn write_ok() -> Result<(), Box<dyn std::error::Error>> {
+        // arrange
+        let mut sut = BytePacketBuffer::new();
+        let input: u8 = 1;
+
+        // act
+        sut.write(input)?;
+
+        // assert
+        assert_eq!(sut.buf[0], 1);
+
+        Ok(())
+    }
+
+    #[test]
+    fn write_u8_ok() -> Result<(), Box<dyn std::error::Error>> {
+        // arrange
+        let mut sut = BytePacketBuffer::new();
+        let input: u8 = 1;
+
+        // act
+        sut.write_u8(input)?;
+
+        // assert
+        assert_eq!(sut.buf[0], 1);
+
+        Ok(())
+    }
+
+    #[test]
+    fn write_u16_ok() -> Result<(), Box<dyn std::error::Error>> {
+        // arrange
+        let mut sut = BytePacketBuffer::new();
+        let input = 0xff;
+
+        // act
+        sut.write_u16(input)?;
+
+        // assert
+        assert_eq!(sut.buf[0], 0);
+        assert_eq!(sut.buf[1], 255);
+
+        Ok(())
+    }
+
+    #[test]
+    fn write_u32_ok() -> Result<(), Box<dyn std::error::Error>> {
+        // arrange
+        let mut sut = BytePacketBuffer::new();
+        // 111111111111111111111111
+        let input: u32 = (0xff << 24) | (0xff << 16) | (0xff << 8) | 0xff;
+
+        // act
+        sut.write_u32(input)?;
+
+        // assert
+        assert_eq!(sut.buf[0], 255);
+        assert_eq!(sut.buf[1], 255);
+        assert_eq!(sut.buf[2], 255);
+        assert_eq!(sut.buf[3], 255);
+
+        Ok(())
+    }
+
+    #[test]
+    fn write_write_qname_ok() -> Result<(), Box<dyn std::error::Error>> {
+        // arrange
+        let mut sut = BytePacketBuffer::new();
+        let mut input = "google.com.tw".to_string();
+
+        // act
+        sut.write_qname(&mut input)?;
+
+        // assert
+        println!("{:?}", sut.buf);
+        // 6, 103, 111, 111, 103, 108, 101, 3, 99, 111, 109, 2, 116, 119, 0
+        assert_eq!(sut.buf[0], 6);
+        assert_eq!(sut.buf[1], 103);
+        assert_eq!(sut.buf[2], 111);
+        assert_eq!(sut.buf[3], 111);
+        assert_eq!(sut.buf[4], 103);
+        assert_eq!(sut.buf[5], 108);
+        assert_eq!(sut.buf[6], 101);
+        assert_eq!(sut.buf[7], 3);
+        assert_eq!(sut.buf[8], 99);
+        assert_eq!(sut.buf[9], 111);
+        assert_eq!(sut.buf[10], 109);
+        assert_eq!(sut.buf[11], 2);
+        assert_eq!(sut.buf[12], 116);
+        assert_eq!(sut.buf[13], 119);
+        assert_eq!(sut.buf[14], 0);
+
         Ok(())
     }
 }
