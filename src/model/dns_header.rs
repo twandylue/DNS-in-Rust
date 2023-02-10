@@ -75,6 +75,41 @@ impl DnsHeader {
 
         Ok(())
     }
+
+    pub fn write(&self, buffer: &mut BytePacketBuffer) -> Result<(), Box<dyn std::error::Error>> {
+        buffer.write_u16(self.id)?;
+
+        // 0 0 0 0 0 0 0 1  0 0 1 0 0 0 0 0
+        // - -+-+-+- - - -  - -+-+- -+-+-+-
+        // Q    O    A T R  R   Z      R
+        // R    P    A C D  A          C
+        //      C                      O
+        //      O                      D
+        //      D                      E
+        //      E
+        buffer.write_u8(
+            ((self.query_response as u8) << 7)
+                | ((self.opcode as u8) << 3)
+                | ((self.authoritative_answer as u8) << 2)
+                | ((self.truncated_message as u8) << 1)
+                | ((self.recursion_desired as u8) << 0),
+        )?;
+
+        buffer.write_u8(
+            ((self.recursion_available as u8) << 7)
+                | ((self.z as u8) << 6)
+                | ((self.authed_data as u8) << 5)
+                | ((self.checking_disabled as u8) << 4)
+                | (self.response_code as u8),
+        )?;
+
+        buffer.write_u16(self.questions_count)?;
+        buffer.write_u16(self.answers_count)?;
+        buffer.write_u16(self.authority_count)?;
+        buffer.write_u16(self.additional_count)?;
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -124,17 +159,80 @@ pub mod tests {
         //      D                      E
         //      E
         assert_eq!(sut.id, 34346);
+
         assert_eq!(sut.query_response, false);
         assert_eq!(sut.opcode, 0);
         assert_eq!(sut.authoritative_answer, false);
         assert_eq!(sut.truncated_message, false);
         assert_eq!(sut.recursion_desired, true);
+
         assert_eq!(sut.recursion_available, false);
         assert_eq!(sut.z, false);
         assert_eq!(sut.authed_data, true);
         assert_eq!(sut.checking_disabled, false);
         assert_eq!(sut.response_code, ResultCode::from_number(0));
+
+        assert_eq!(sut.questions_count, 1);
+        assert_eq!(sut.answers_count, 0);
+        assert_eq!(sut.authority_count, 0);
+        assert_eq!(sut.additional_count, 0);
+
         assert_eq!(buffer.pos(), 12);
+
+        Ok(())
+    }
+
+    #[test]
+    fn write_ok() -> Result<(), Box<dyn std::error::Error>> {
+        // arrange
+        let expected = [
+            0x86, 0x2a, 0x01, 0x20, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0,
+        ];
+
+        let mut buffer = BytePacketBuffer::new();
+        let mut sut = DnsHeader::new();
+        sut.id = 34346;
+
+        sut.query_response = false;
+        sut.opcode = 0;
+        sut.authoritative_answer = false;
+        sut.truncated_message = false;
+        sut.recursion_desired = true;
+
+        sut.recursion_available = false;
+        sut.z = false;
+        sut.authed_data = true;
+        sut.checking_disabled = false;
+        sut.response_code = ResultCode::from_number(0);
+
+        sut.questions_count = 1;
+        sut.answers_count = 0;
+        sut.authority_count = 0;
+        sut.additional_count = 0;
+
+        // act
+        sut.write(&mut buffer)?;
+
+        // assert
+        assert_eq!(expected, buffer.buf);
 
         Ok(())
     }
