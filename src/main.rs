@@ -1,16 +1,51 @@
 use byte_packet_buffer::BytePacketBuffer;
-use std::{fs::File, io::Read};
+use model::{dns_packet::DnsPacket, dns_question::DnsQuestion, query_type::QueryType};
+use std::{fs::File, io::Read, net::UdpSocket};
 mod byte_packet_buffer;
 mod model;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // TODO:
-    let mut f = File::open("./docs/response_packet.txt")?;
-    let mut buffer = BytePacketBuffer::new();
-    f.read(&mut buffer.buf)?;
+    let qname = "google.com";
+    let qtype = QueryType::A;
 
-    let packet = model::dns_packet::DnsPacket::from_buffer(&mut buffer);
-    println!("{:#?}", packet);
+    let server = ("8.8.8.8", 53);
+
+    let socket = UdpSocket::bind(("0.0.0.0", 43210))?;
+
+    let mut packet = DnsPacket::new();
+
+    packet.header.id = 1234;
+    packet.header.questions_count = 1;
+    packet.header.recursion_desired = true;
+    packet
+        .questions
+        .push(DnsQuestion::new(qname.to_string(), qtype));
+
+    let mut req_buffer = BytePacketBuffer::new();
+    packet.write(&mut req_buffer)?;
+
+    socket.send_to(&req_buffer.buf[0..req_buffer.pos], server)?;
+    let mut res_buffer = BytePacketBuffer::new();
+    socket.recv(&mut res_buffer.buf)?;
+
+    let res_packet = DnsPacket::from_buffer(&mut res_buffer)?;
+    println!("{:#?}", res_packet.header);
+
+    for q in res_packet.questions {
+        println!("{:#?}", q);
+    }
+
+    for rec in res_packet.answers {
+        println!("{:#?}", rec);
+    }
+
+    for rec in res_packet.authorities {
+        println!("{:#?}", rec);
+    }
+
+    for rec in res_packet.resources {
+        println!("{:#?}", rec);
+    }
 
     Ok(())
 }
