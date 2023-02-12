@@ -179,6 +179,19 @@ impl BytePacketBuffer {
 
         Ok(())
     }
+
+    pub fn set(&mut self, pos: usize, val: u8) -> Result<(), Box<dyn std::error::Error>> {
+        self.buf[pos] = val;
+
+        Ok(())
+    }
+
+    pub fn set_u16(&mut self, pos: usize, val: u16) -> Result<(), Box<dyn std::error::Error>> {
+        self.set(pos, (val >> 8) as u8)?;
+        self.set(pos + 1, (val & 0xFF) as u8)?;
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -553,6 +566,35 @@ mod tests {
         assert_eq!(sut.buf[12], 116);
         assert_eq!(sut.buf[13], 119);
         assert_eq!(sut.buf[14], 0);
+
+        Ok(())
+    }
+
+    #[test]
+    fn set_ok() -> Result<(), Box<dyn std::error::Error>> {
+        // arrange
+        let mut sut = BytePacketBuffer::new();
+
+        // act
+        sut.set(0, 1)?;
+
+        // assert
+        sut.buf[0] = 1;
+
+        Ok(())
+    }
+
+    #[test]
+    fn set_u16_ok() -> Result<(), Box<dyn std::error::Error>> {
+        // arrange
+        let mut sut = BytePacketBuffer::new();
+
+        // act
+        sut.set_u16(0, 0xFFFF)?;
+
+        // assert
+        sut.buf[0] = 255;
+        sut.buf[1] = 255;
 
         Ok(())
     }
