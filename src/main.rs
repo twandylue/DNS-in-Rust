@@ -6,8 +6,8 @@ mod model;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // A query for google.com
-    let qname = "google.com";
-    let qtype = QueryType::A;
+    let qname = "yahoo.com";
+    let qtype = QueryType::MX;
 
     // Using google's public DNS server
     // ref: https://zh.wikipedia.org/zh-tw/Google_Public_DNS
