@@ -213,6 +213,7 @@ impl DnsRecord {
                 buffer.write_u16(QueryType::AAAA.to_num())?;
                 buffer.write_u16(1)?;
                 buffer.write_u32(ttl)?;
+                buffer.write_u16(16)?;
 
                 for octets in &addr.segments() {
                     buffer.write_u16(*octets)?;

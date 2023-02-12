@@ -1,5 +1,5 @@
+use super::super::BytePacketBuffer;
 use super::query_type::QueryType;
-use crate::byte_packet_buffer::BytePacketBuffer;
 
 #[derive(Debug, Clone)]
 pub struct DnsQuestion {

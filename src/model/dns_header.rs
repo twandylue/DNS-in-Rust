@@ -1,5 +1,5 @@
+use super::super::BytePacketBuffer;
 use super::result_code::ResultCode;
-use crate::byte_packet_buffer::BytePacketBuffer;
 
 #[derive(Clone, Debug)]
 pub struct DnsHeader {

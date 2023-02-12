@@ -5,9 +5,12 @@ mod byte_packet_buffer;
 mod model;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // let qname = "yahoo.com";
+    // let qtype = QueryType::MX;
+
     // A query for google.com
-    let qname = "yahoo.com";
-    let qtype = QueryType::MX;
+    let qname = "google.com";
+    let qtype = QueryType::A;
 
     // Using google's public DNS server
     // ref: https://zh.wikipedia.org/zh-tw/Google_Public_DNS
