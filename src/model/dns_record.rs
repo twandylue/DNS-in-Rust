@@ -1,5 +1,5 @@
+use super::super::BytePacketBuffer;
 use super::query_type::QueryType;
-use crate::byte_packet_buffer::BytePacketBuffer;
 use std::net::{Ipv4Addr, Ipv6Addr};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -44,7 +44,7 @@ impl DnsRecord {
         buffer.read_qname(&mut domain)?;
         let qtype_num = buffer.read_u16()?;
         let qtype = QueryType::from_num(qtype_num);
-        let _ = buffer.read_u16()?;
+        let _ = buffer.read_u16()?; // NOTE: class
         let ttl = buffer.read_u32()?;
         let data_len = buffer.read_u16()?;
 
@@ -138,15 +138,13 @@ impl DnsRecord {
                 // NOTE: Write the domain name directly, not use the skippint skill
                 buffer.write_qname(domain)?;
                 buffer.write_u16(QueryType::A.to_num())?;
-                buffer.write_u16(1)?;
+                buffer.write_u16(1)?; // NOTE: class
                 buffer.write_u32(ttl)?;
-                buffer.write_u16(4)?; // address has 4 bytes
+                buffer.write_u16(4)?; // NOTE: ipv4 address is 4 bytes
 
-                let octets = addr.octets();
-                buffer.write_u8(octets[0])?;
-                buffer.write_u8(octets[1])?;
-                buffer.write_u8(octets[2])?;
-                buffer.write_u8(octets[3])?;
+                for octet in &addr.octets() {
+                    buffer.write_u8(*octet)?;
+                }
             }
             DnsRecord::NS {
                 ref domain,
@@ -159,12 +157,12 @@ impl DnsRecord {
                 buffer.write_u32(ttl)?;
 
                 let pos = buffer.pos();
-                buffer.write_u16(0)?; // may be compressed bytes
+                buffer.write_u16(0)?; // NOTE: preserve for Len field in Record Type
 
                 buffer.write_qname(host)?;
 
-                let size = buffer.pos - (pos + 2);
-                buffer.set_u16(pos, size as u16)?;
+                let len = buffer.pos - (pos + 2);
+                buffer.set_u16(pos, len as u16)?; // NOTE: Set Len field
             }
             DnsRecord::CNAME {
                 ref domain,
@@ -177,12 +175,12 @@ impl DnsRecord {
                 buffer.write_u32(ttl)?;
 
                 let pos = buffer.pos();
-                buffer.write_u16(0)?; // may be compressed bytes
+                buffer.write_u16(0)?;
 
                 buffer.write_qname(host)?;
 
-                let size = buffer.pos - (pos + 2);
-                buffer.set_u16(pos, size as u16)?;
+                let len = buffer.pos - (pos + 2);
+                buffer.set_u16(pos, len as u16)?;
             }
             DnsRecord::MX {
                 ref domain,
@@ -196,13 +194,13 @@ impl DnsRecord {
                 buffer.write_u32(ttl)?;
 
                 let pos = buffer.pos();
-                buffer.write_u16(0)?; // may be compressed bytes
+                buffer.write_u16(0)?;
 
                 buffer.write_u16(priority)?;
                 buffer.write_qname(host)?;
 
-                let size = buffer.pos - (pos + 2);
-                buffer.set_u16(pos, size as u16)?;
+                let len = buffer.pos - (pos + 2);
+                buffer.set_u16(pos, len as u16)?;
             }
             DnsRecord::AAAA {
                 ref domain,
@@ -213,6 +211,8 @@ impl DnsRecord {
                 buffer.write_u16(QueryType::AAAA.to_num())?;
                 buffer.write_u16(1)?;
                 buffer.write_u32(ttl)?;
+                // NOTE: ipv6 address is 16 bytes
+                // ref: https://www.ibm.com/docs/zh-tw/i/7.1?topic=6-comparison-ipv4-ipv6
                 buffer.write_u16(16)?;
 
                 for octets in &addr.segments() {
