@@ -5,6 +5,7 @@ use super::model::{
 };
 use std::net::UdpSocket;
 
+/// Query the name through Google's public DNS
 pub fn lookup(qname: &str, qtype: QueryType) -> Result<DnsPacket, Box<dyn std::error::Error>> {
     // Forward queries to Google's public DNS
     let server = ("8.8.8.8", 53);
@@ -33,18 +34,28 @@ pub fn lookup(qname: &str, qtype: QueryType) -> Result<DnsPacket, Box<dyn std::e
 /// Handle a single incoming packet
 pub fn handle_query(socket: &UdpSocket) -> Result<(), Box<dyn std::error::Error>> {
     let mut req_buffer = BytePacketBuffer::new();
+
+    // While the socket is ready, we can read a packet. This will `block` until one is received.
     let (_, src) = socket.recv_from(&mut req_buffer.buf)?;
+
     let mut request = DnsPacket::from_buffer(&mut req_buffer)?;
 
+    // Create and initialize the response packet
     let mut res_packet = DnsPacket::new();
     res_packet.header.id = request.header.id;
     res_packet.header.recursion_desired = true;
     res_packet.header.recursion_available = true;
     res_packet.header.query_response = true;
 
+    // In normal case, only one question is present
     if let Some(question) = request.questions.pop() {
         println!("Received query: {:?}", question);
 
+        // The query can be forwarded to the target server.
+        // There's always the possibility that the query will
+        // fail, in which case the `SERVFAIL` response code is set to indicate
+        // as much to the client.
+        // If everything goes as planned, the question and response records as copied into our response packet.
         if let Ok(result) = lookup(&question.name, question.qtype) {
             res_packet.questions.push(question);
             res_packet.header.response_code = result.header.response_code;
@@ -64,17 +75,19 @@ pub fn handle_query(socket: &UdpSocket) -> Result<(), Box<dyn std::error::Error>
         } else {
             res_packet.header.response_code = ResultCode::SERVFAIL;
         }
-    } else {
+    }
+    // We have to make sure that a question is actually present.
+    // If not, we return `FORMERR` to indicate that the sender made something wrong.
+    else {
         res_packet.header.response_code = ResultCode::FORMERR;
     }
 
+    // Transform the response packet to buffer and send it back to our client.
     let mut res_buffer = BytePacketBuffer::new();
     res_packet.write(&mut res_buffer)?;
 
-    let len = res_buffer.pos();
-    let data = res_buffer.get_range(0, len)?;
-
-    socket.send_to(data, src)?;
+    // Response to the client.
+    socket.send_to(&res_buffer.buf[0..res_buffer.pos()], src)?;
 
     Ok(())
 }
