@@ -110,17 +110,14 @@ impl DnsPacket {
     /// Name servers often bundle the corresponding A records when replying to an NS query. Thus,
     /// we implement a function that returns the actual IP for an NS record if possible.
     pub fn get_resolved_ns(&self, qname: &str) -> Option<Ipv4Addr> {
-        self.get_ns(qname)
-            .flat_map(|(_, host)| {
-                self.resources
-                    .iter()
-                    .filter_map(move |record| match record {
-                        DnsRecord::A { domain, addr, .. } if domain == host => Some(addr),
-                        _ => None,
-                    })
-            })
-            .map(|addr| *addr)
-            .next()
+        self.get_ns(qname).find_map(|(_, host)| {
+            let result = self.resources.iter().find_map(move |record| match record {
+                DnsRecord::A { domain, addr, .. } if domain == host => Some(*addr),
+                _ => None,
+            });
+
+            result
+        })
     }
 
     /// In certain cases there won't be any A records in the additional section. For this case, we
