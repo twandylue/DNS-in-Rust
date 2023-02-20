@@ -3,13 +3,67 @@ use super::model::{
     dns_packet::DnsPacket, dns_question::DnsQuestion, query_type::QueryType,
     result_code::ResultCode,
 };
-use std::net::UdpSocket;
+use std::net::{Ipv4Addr, UdpSocket};
+
+pub fn recursive_lookup(
+    qname: &str,
+    qtype: QueryType,
+) -> Result<DnsPacket, Box<dyn std::error::Error>> {
+    // For practice, we are always starting with `a.root-servers.net`
+    let mut ns = Ipv4Addr::new(198, 41, 0, 4);
+
+    loop {
+        println!("attempting lookup of {:?} {} with ns {}", qtype, qname, ns);
+        let copy_ns = ns;
+
+        let server = (copy_ns, 53);
+        let response = lookup(qname, qtype, server)?;
+
+        // If there are no entries in the answer section, and no errors, it is Ok
+        if !response.answers.is_empty() && response.header.response_code == ResultCode::NOERROR {
+            return Ok(response);
+        }
+
+        // We might also get a `NXDOMAIN` reply, which is the authorities name servers way of
+        // telling us that the name doesn't exist.
+        if response.header.response_code == ResultCode::NXDOMAIN {
+            return Ok(response);
+        }
+
+        // Otherwise, we will try to find a new name server based on NS and a corresponding A
+        // record in the additional section. If this succeeds, we can switch name server and retry
+        // again.
+        if let Some(new_ns) = response.get_resolved_ns(qname) {
+            ns = new_ns;
+
+            continue;
+        }
+
+        // If not, we will have to resolve the ip of a NS record. If no NS records exist, we will
+        // go with what the last server told us.
+        let new_ns_name = match response.get_unsolved_ns(qname) {
+            Some(x) => x,
+            None => return Ok(response),
+        };
+
+        let recursive_response = recursive_lookup(&new_ns_name, QueryType::A)?;
+
+        // Finally, we pick a random ip from the result, and restart the loop. If no such record is
+        // available, we return the last result we got.
+        if let Some(new_ns) = recursive_response.get_random_a() {
+            ns = new_ns
+        } else {
+            return Ok(response);
+        }
+    }
+}
 
 /// Query the name through Google's public DNS
-pub fn lookup(qname: &str, qtype: QueryType) -> Result<DnsPacket, Box<dyn std::error::Error>> {
-    // Forward queries to Google's public DNS
-    let server = ("8.8.8.8", 53);
-
+pub fn lookup(
+    qname: &str,
+    qtype: QueryType,
+    server: (Ipv4Addr, u16),
+) -> Result<DnsPacket, Box<dyn std::error::Error>> {
     let socket = UdpSocket::bind(("0.0.0.0", 43210))?;
 
     let mut packet = DnsPacket::new();
@@ -56,7 +110,7 @@ pub fn handle_query(socket: &UdpSocket) -> Result<(), Box<dyn std::error::Error>
         // fail, in which case the `SERVFAIL` response code is set to indicate
         // as much to the client.
         // If everything goes as planned, the question and response records as copied into our response packet.
-        if let Ok(result) = lookup(&question.name, question.qtype) {
+        if let Ok(result) = recursive_lookup(&question.name, question.qtype) {
             res_packet.questions.push(question);
             res_packet.header.response_code = result.header.response_code;
 
