@@ -2,6 +2,10 @@
 
 Build up a simple DNS with Rust
 
+## TODOs
+
+- [ ] Cache
+
 ## References
 
 - [dnsguide](https://github.com/EmilHernvall/dnsguide)
