@@ -23,6 +23,7 @@ $ echo '01 20' | xxd -p -r | xxd -b -g 0 -c 8 | cut -c11-74
 
 <details>
   <summary>Breaking down the expression:</summary>
+
 ```plain
 - f'...': creates an f-string, allowing expressions to be evaluated within curly braces {}.
 - 0xFF: the integer value 255 in hexadecimal notation.
@@ -33,6 +34,7 @@ $ echo '01 20' | xxd -p -r | xxd -b -g 0 -c 8 | cut -c11-74
 - 16: specifies the width of the field.
 - b: specifies to format as a binary string.
 ```
+
 </details>
 
 ## Convert Hex to Decimal
